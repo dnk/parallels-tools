@@ -5,8 +5,15 @@ import prlsdkapi as prl
 import sys
 import optparse
 
+class Actions:
+	CREATE = 0
+	RESTORE = 1
+
 option_list = [
 	optparse.make_option("--name", dest="name", type="string", help="vm name"),
+	optparse.make_option("--tag", dest="tag", type="string", help="tag name"),
+	optparse.make_option("--create", action="store_const", const=Actions.CREATE, dest="action"),
+	optparse.make_option("--restore", action="store_const", const=Actions.RESTORE, dest="action"),
 ]
 
 parser = optparse.OptionParser(option_list=option_list)
@@ -16,9 +23,14 @@ try:
 	query = options.name
 	if not query:
 		raise Exception("query is None")
+	tag = options.tag
+	if not tag:
+		raise Exception("tag is None")
+
+	action = options.action
 except :
 	parser.print_help()
-	sys.exit(0)
+	sys.exit(1)
 
 
 
