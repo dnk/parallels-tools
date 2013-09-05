@@ -17,10 +17,10 @@ class Actions:
 
 option_list = [
 	optparse.make_option("--name", dest="name", type="string", help="vm name"),
-	optparse.make_option("--tag", dest="tag", type="string", help="tag name"),
-	optparse.make_option("--create", action="store_const", const=Actions.CREATE, dest="action"),
-	optparse.make_option("--switch", action="store_const", const=Actions.SWITCH, dest="action"),
-	optparse.make_option("--remove", action="store_const", const=Actions.REMOVE, dest="action"),
+	optparse.make_option("--tag", dest="tag", type="string", help="tag name, used to identify snapshots"),
+	optparse.make_option("--create", action="store_const", const=Actions.CREATE, dest="action", help="create snapshot"),
+	optparse.make_option("--switch", action="store_const", const=Actions.SWITCH, dest="action", help="switch to snapshot"),
+	optparse.make_option("--remove", action="store_const", const=Actions.REMOVE, dest="action", help="remove snapshot"),
 ]
 
 parser = optparse.OptionParser(option_list=option_list)
@@ -35,6 +35,8 @@ try:
 		raise Exception("tag is None")
 
 	action = options.action
+	if action is None:
+		raise Exception("action is None")
 except :
 	parser.print_help()
 	sys.exit(1)
@@ -142,7 +144,7 @@ def switch_snapshot(vm_list, tag):
 
 
 def remove_snapshot(vm_list, tag):
-	pass
+	raise NotImplementedError("remove snapshot is not implemented")
 
 init()
 
@@ -159,6 +161,9 @@ actions = {
 	Actions.SWITCH: switch_snapshot,
 	Actions.REMOVE: remove_snapshot,
 }
+
+if (actions.get(action) is None):
+	raise NotImplementedError("action %s is not implemented" % str(action))
 
 actions[action](vm_list_filtered, tag)
 
