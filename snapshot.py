@@ -71,17 +71,6 @@ def wait_jobs(jobs):
 def tag_value(tag):
 	return "tag:%s" % tag
 
-def create_snapshot(vm_list, tag):
-	jobs = {}
-	description = tag_value(tag)
-	for vm in vm_list:
-		vm_name = vm.get_name()
-		print "creating snapshot for %s" % vm_name
-		job = vm.create_snapshot(tag, description)
-		jobs[vm] = job
-	wait_jobs(jobs)
-
-
 class Snapshot(object):
 	def __init__(self, guid, dat, description, name, current):
 		self.guid = guid
@@ -117,7 +106,7 @@ class Snapshot(object):
 		if self.description:
 			return self.description
 		else:
-			return self.guid
+			return "guid:%s" % self.guid
 		
 
 def build_tree(vm):
@@ -163,6 +152,22 @@ def find_guid(snapshot, tag):
 
 	return None
 
+def create_snapshot(vm_list, tag):
+	snapshots = get_snapshot_trees(vm_list)
+	for vm, snapshot in snapshots.iteritems():
+		if find_guid(snapshot, tag):
+			raise Exception("Tag is not unique: VM %s already contains snapshot with tag '%s'", vm.get_name(), tag)
+
+	jobs = {}
+	description = tag_value(tag)
+	for vm in vm_list:
+		vm_name = vm.get_name()
+		print "creating snapshot for %s" % vm_name
+		job = vm.create_snapshot(tag, description)
+		jobs[vm] = job
+	wait_jobs(jobs)
+
+
 def switch_to_snapshot(vm_list, tag):
 	snapshots = get_snapshot_trees(vm_list)
 	guids = {}
@@ -194,8 +199,9 @@ def snapshot_tree(vm_list, tag):
 		if snapshot:
 			for _, child in snapshot.children.iteritems():
 				print_tree(child)
+			print
 		else:
-			print "No snapshots"
+			print "No snapshots\n"
 
 
 init()
