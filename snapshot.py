@@ -14,6 +14,7 @@ class Actions:
 	CREATE = 0
 	SWITCH = 1
 	REMOVE = 2
+	TREE = 3
 
 parser = optparse.OptionParser()
 
@@ -30,6 +31,7 @@ snapshot_options_list = [
 	optparse.make_option("--create", action="store_const", const=Actions.CREATE, dest="action", help="create snapshot"),
 	optparse.make_option("--switch", action="store_const", const=Actions.SWITCH, dest="action", help="switch to snapshot"),
 	optparse.make_option("--remove", action="store_const", const=Actions.REMOVE, dest="action", help="remove snapshot"),
+	optparse.make_option("--tree", action="store_const", const=Actions.TREE, dest="action", help="show snapshots tree"),
 ]
 
 snapshot_options_group = optparse.OptionGroup(parser, 'Snapshot operations')
@@ -42,13 +44,13 @@ try:
 	query = options.name
 	if not query:
 		raise Exception("query is None")
-	tag = options.tag
-	if not tag:
-		raise Exception("tag is None")
-
 	action = options.action
 	if action is None:
 		raise Exception("action is None")
+
+	tag = options.tag
+	if not tag and action in (Actions.CREATE, Actions.SWITCH, Actions.REMOVE):
+		raise Exception("tag is None")
 except :
 	parser.print_help()
 	sys.exit(1)
@@ -158,6 +160,9 @@ def switch_snapshot(vm_list, tag):
 def remove_snapshot(vm_list, tag):
 	raise NotImplementedError("remove snapshot is not implemented")
 
+def snapshot_tree(vm_list, tag):
+	raise NotImplementedError("snapshot tree is not implemented")
+
 init()
 
 
@@ -172,6 +177,7 @@ actions = {
 	Actions.CREATE: create_snapshot,
 	Actions.SWITCH: switch_snapshot,
 	Actions.REMOVE: remove_snapshot,
+	Actions.TREE: snapshot_tree,
 }
 
 if (actions.get(action) is None):
