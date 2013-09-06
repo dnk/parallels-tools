@@ -15,15 +15,27 @@ class Actions:
 	SWITCH = 1
 	REMOVE = 2
 
-option_list = [
-	optparse.make_option("--name", dest="name", type="string", help="vm name"),
+parser = optparse.OptionParser()
+
+choose_options_list = [
+	optparse.make_option("--name", dest="name", type="string", help="select VMs by name like grep"),
+]
+
+choose_options_group = optparse.OptionGroup(parser, 'Select VMs')
+choose_options_group.add_options(choose_options_list)
+parser.add_option_group(choose_options_group)
+
+snapshot_options_list = [
 	optparse.make_option("--tag", dest="tag", type="string", help="tag name, used to identify snapshots"),
 	optparse.make_option("--create", action="store_const", const=Actions.CREATE, dest="action", help="create snapshot"),
 	optparse.make_option("--switch", action="store_const", const=Actions.SWITCH, dest="action", help="switch to snapshot"),
 	optparse.make_option("--remove", action="store_const", const=Actions.REMOVE, dest="action", help="remove snapshot"),
 ]
 
-parser = optparse.OptionParser(option_list=option_list)
+snapshot_options_group = optparse.OptionGroup(parser, 'Snapshot operations')
+snapshot_options_group.add_options(snapshot_options_list)
+parser.add_option_group(snapshot_options_group)
+
 (options, args) = parser.parse_args()
 
 try:
