@@ -114,19 +114,45 @@ class Snapshot(object):
 		return ( "Snapshot " +	repr(self.guid) + "," + repr(self.description) + repr(self.children) + ")")
 
 	def __str__(self):
-		return self.guid
+		if self.description:
+			return self.description
+		else:
+			return self.guid
 		
 
 def build_tree(vm):
 	xml = vm.get_snapshots_tree_ex(prl.consts.PGST_WITHOUT_SCREENSHOTS).wait().get_param_as_string()
-	xml = xml.replace("xmlns:xsi=\"\"", "").replace("xsi:noNamespaceSchemaLocation=\"\"", "")
-	tree = etree.fromstring(xml)
-	items = tree.xpath("/ParallelsSavedStates/SavedStateItem")
-	item = items[0]
-	snapshot = Snapshot.parse(item)
-	return snapshot
+	if not xml:
+		return None
+	try:
+		xml = xml.replace("xmlns:xsi=\"\"", "").replace("xsi:noNamespaceSchemaLocation=\"\"", "")
+		tree = etree.fromstring(xml)
+		items = tree.xpath("/ParallelsSavedStates/SavedStateItem")
+		item = items[0]
+		snapshot = Snapshot.parse(item)
+		return snapshot
+	except Exception, e:
+		print xml
+		raise
+
+def print_tree(snapshot, offset = 0):
+	marker = u"\u251c" if len(snapshot.children) > 1 else u"\u2514"
+	prefix = " "*offset
+	print "%s%s %s" % (prefix, marker, str(snapshot))
+	for _, child in snapshot.children.iteritems():
+		print_tree(child, offset + 1)
+
+def get_snapshot_trees(vm_list):
+	snapshots = {}
+	for vm in vm_list:
+		snapshot = build_tree(vm)
+		snapshots[vm] = snapshot
+	return snapshots
 
 def find_guid(snapshot, tag):
+	if not snapshot:
+		return None
+
 	if snapshot.description == tag_value(tag):
 		return snapshot.guid
 
@@ -137,11 +163,11 @@ def find_guid(snapshot, tag):
 
 	return None
 
-def switch_snapshot(vm_list, tag):
+def switch_to_snapshot(vm_list, tag):
+	snapshots = get_snapshot_trees(vm_list)
 	guids = {}
-	for vm in vm_list:
-		snapshots = build_tree(vm)
-		guids[vm] = find_guid(snapshots, tag)
+	for vm, snapshot in snapshots.iteritems():
+		guids[vm] = find_guid(snapshot, tag)
 
 	not_found = filter(lambda (key, value): False if value else True, guids.items())
 	if not_found:
@@ -161,7 +187,16 @@ def remove_snapshot(vm_list, tag):
 	raise NotImplementedError("remove snapshot is not implemented")
 
 def snapshot_tree(vm_list, tag):
-	raise NotImplementedError("snapshot tree is not implemented")
+	snapshots = get_snapshot_trees(vm_list)
+	for vm, snapshot in snapshots.iteritems():
+		print "%s:" % vm.get_name()
+		# ignore root snapshot
+		if snapshot:
+			for _, child in snapshot.children.iteritems():
+				print_tree(child)
+		else:
+			print "No snapshots"
+
 
 init()
 
@@ -175,7 +210,7 @@ vm_list_filtered = filter(lambda x: re.search(query, x.get_name()), vm_list)
 
 actions = { 
 	Actions.CREATE: create_snapshot,
-	Actions.SWITCH: switch_snapshot,
+	Actions.SWITCH: switch_to_snapshot,
 	Actions.REMOVE: remove_snapshot,
 	Actions.TREE: snapshot_tree,
 }
