@@ -104,9 +104,9 @@ class Snapshot(object):
 
 	def __str__(self):
 		if self.description:
-			return self.description
+			return "%s (%s)" % (self.name, self.description)
 		else:
-			return "guid:%s" % self.guid
+			return "%s (guid:%s)" % (self.name, self.guid)
 		
 
 def build_tree(vm):
