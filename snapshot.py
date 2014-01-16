@@ -127,7 +127,10 @@ def build_tree(vm):
 def print_tree(snapshot, offset = 0):
 	marker = u"\u251c" if len(snapshot.children) > 1 else u"\u2514"
 	prefix = " "*offset
-	print "%s%s %s" % (prefix, marker, str(snapshot))
+	current = ""
+	if snapshot.current:
+		current = "<-- current"
+	print "%s%s %s %s" % (prefix, marker, str(snapshot), current)
 	for _, child in snapshot.children.iteritems():
 		print_tree(child, offset + 1)
 
@@ -189,7 +192,23 @@ def switch_to_snapshot(vm_list, tag):
 
 
 def remove_snapshot(vm_list, tag):
-	raise NotImplementedError("remove snapshot is not implemented")
+	snapshots = get_snapshot_trees(vm_list)
+	guids = {}
+	for vm, snapshot in snapshots.iteritems():
+		guids[vm] = find_guid(snapshot, tag)
+
+	not_found = filter(lambda (key, value): False if value else True, guids.items())
+	if not_found:
+		raise Exception("Found no shapshot with tag '%s' for %s" % (tag, ", ".join(map(lambda (key, value): key.get_name(), not_found))))
+
+	jobs = {}
+	for vm, guid in guids.items():
+		vm_name = vm.get_name()
+		print "removing snapshot '%s' for %s" % (guid, vm_name)
+		job = vm.delete_snapshot(guid)
+		jobs[vm] = job
+
+	wait_jobs(jobs)
 
 def snapshot_tree(vm_list, tag):
 	snapshots = get_snapshot_trees(vm_list)
