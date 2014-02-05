@@ -26,11 +26,20 @@ choose_options_group = optparse.OptionGroup(parser, 'Select VMs')
 choose_options_group.add_options(choose_options_list)
 parser.add_option_group(choose_options_group)
 
+def optparse_crs_callback(option, opt, value, parser):
+	parser.values.tag = value
+	if opt == "--create":
+		parser.values.action = Actions.CREATE
+	if opt == "--switch":
+		parser.values.action = Actions.SWITCH
+	if opt == "--remove":
+		parser.values.action = Actions.REMOVE
+		
+
 snapshot_options_list = [
-	optparse.make_option("--tag", dest="tag", type="string", help="tag name, used to identify snapshots"),
-	optparse.make_option("--create", action="store_const", const=Actions.CREATE, dest="action", help="create snapshot"),
-	optparse.make_option("--switch", action="store_const", const=Actions.SWITCH, dest="action", help="switch to snapshot"),
-	optparse.make_option("--remove", action="store_const", const=Actions.REMOVE, dest="action", help="remove snapshot"),
+	optparse.make_option("--create", action="callback", callback=optparse_crs_callback, type="string", help="create snapshot"),
+	optparse.make_option("--switch", action="callback", callback=optparse_crs_callback, type="string", help="switch to snapshot"),
+	optparse.make_option("--remove", action="callback", callback=optparse_crs_callback, type="string", help="remove snapshot"),
 	optparse.make_option("--tree", action="store_const", const=Actions.TREE, dest="action", help="show snapshots tree"),
 ]
 
