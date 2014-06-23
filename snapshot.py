@@ -57,7 +57,7 @@ try:
 	if action is None:
 		raise Exception("action is None")
 
-	tag = options.tag
+	tag = options.tag if hasattr(options, "tag") else None
 	if not tag and action in (Actions.CREATE, Actions.SWITCH, Actions.REMOVE):
 		raise Exception("tag is None")
 except :
@@ -73,7 +73,7 @@ def init():
 def wait_jobs(jobs):
 	for vm, job in jobs.iteritems():
 		vm_name = vm.get_name()
-		print "waiting job for %s" % vm_name
+		print "waiting job for %s%s" % (vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
 		job.wait()
 		print "done"
 
@@ -168,13 +168,13 @@ def create_snapshot(vm_list, tag):
 	snapshots = get_snapshot_trees(vm_list)
 	for vm, snapshot in snapshots.iteritems():
 		if find_guid(snapshot, tag):
-			raise Exception("Tag is not unique: VM %s already contains snapshot with tag '%s'", vm.get_name(), tag)
+			raise Exception("Tag is not unique: VM %s already contains snapshot with tag '%s%s'", vm.get_name(), tag, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
 
 	jobs = {}
 	description = tag_value(tag)
 	for vm in vm_list:
 		vm_name = vm.get_name()
-		print "creating snapshot for %s" % vm_name
+		print "creating snapshot for %s%s" % (vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
 		job = vm.create_snapshot(tag, description)
 		jobs[vm] = job
 	wait_jobs(jobs)
@@ -193,7 +193,7 @@ def switch_to_snapshot(vm_list, tag):
 	jobs = {}
 	for vm, guid in guids.items():
 		vm_name = vm.get_name()
-		print "switching to snapshot '%s' for %s" % (guid, vm_name)
+		print "switching to snapshot '%s' for %s%s" % (guid, vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
 		job = vm.switch_to_snapshot(guid)
 		jobs[vm] = job
 
@@ -207,13 +207,15 @@ def remove_snapshot(vm_list, tag):
 		guids[vm] = find_guid(snapshot, tag)
 
 	not_found = filter(lambda (key, value): False if value else True, guids.items())
-	if not_found:
-		raise Exception("Found no shapshot with tag '%s' for %s" % (tag, ", ".join(map(lambda (key, value): key.get_name(), not_found))))
+#	if not_found:
+#		raise Exception("Found no shapshot with tag '%s' for %s" % (tag, ", ".join(map(lambda (key, value): key.get_name(), not_found))))
 
 	jobs = {}
 	for vm, guid in guids.items():
 		vm_name = vm.get_name()
-		print "removing snapshot '%s' for %s" % (guid, vm_name)
+		if not guid:
+			continue
+		print "removing snapshot '%s' for %s%s" % (guid, vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
 		job = vm.delete_snapshot(guid)
 		jobs[vm] = job
 
@@ -222,7 +224,7 @@ def remove_snapshot(vm_list, tag):
 def snapshot_tree(vm_list, tag):
 	snapshots = get_snapshot_trees(vm_list)
 	for vm, snapshot in snapshots.iteritems():
-		print "%s:" % vm.get_name()
+		print "%s %s:" % (vm.get_name(), "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
 		# ignore root snapshot
 		if snapshot:
 			for _, child in snapshot.children.iteritems():
@@ -238,9 +240,9 @@ init()
 server = prl.Server()
 server.login_local().wait()
 
-vm_list = server.get_vm_list().wait()
+vm_list = server.get_vm_list_ex(prl.consts.PVTF_VM | prl.consts.PVTF_CT).wait()
 
-vm_list_filtered = filter(lambda x: re.search(query, x.get_name()), vm_list)
+vm_list_filtered = filter(lambda x: re.search(query, x.get_name() if x.get_vm_type == prl.consts.PVT_VM else x.get_hostname()), vm_list)
 
 actions = { 
 	Actions.CREATE: create_snapshot,
