@@ -242,7 +242,7 @@ server.login_local().wait()
 
 vm_list = server.get_vm_list_ex(prl.consts.PVTF_VM | prl.consts.PVTF_CT).wait()
 
-vm_list_filtered = filter(lambda x: re.search(query, x.get_name() if x.get_vm_type == prl.consts.PVT_VM else x.get_hostname()), vm_list)
+vm_list_filtered = filter(lambda x: re.search(query, x.get_name() if x.get_vm_type() == prl.consts.PVT_VM else x.get_hostname()), vm_list)
 
 actions = { 
 	Actions.CREATE: create_snapshot,
