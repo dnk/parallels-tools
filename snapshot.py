@@ -19,10 +19,10 @@ class Actions:
 parser = optparse.OptionParser()
 
 choose_options_list = [
-	optparse.make_option("--name", dest="name", type="string", help="select VMs by name like grep"),
+	optparse.make_option("--name", dest="name", type="string", help="select hosts:VMs by name and CTs by hostname like grep or CTs by id"),
 ]
 
-choose_options_group = optparse.OptionGroup(parser, 'Select VMs')
+choose_options_group = optparse.OptionGroup(parser, 'Select operations')
 choose_options_group.add_options(choose_options_list)
 parser.add_option_group(choose_options_group)
 
