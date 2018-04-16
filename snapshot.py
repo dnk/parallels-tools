@@ -73,7 +73,7 @@ def init():
 def wait_jobs(jobs):
 	for vm, job in jobs.iteritems():
 		vm_name = vm.get_name()
-		print "waiting job for %s%s" % (vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
+		print "waiting job for %s %s" % (vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
 		job.wait()
 		print "done"
 
@@ -174,7 +174,7 @@ def create_snapshot(vm_list, tag):
 	description = tag_value(tag)
 	for vm in vm_list:
 		vm_name = vm.get_name()
-		print "creating snapshot for %s%s" % (vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
+		print "creating snapshot for %s %s" % (vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
 		job = vm.create_snapshot(tag, description)
 		jobs[vm] = job
 	wait_jobs(jobs)
