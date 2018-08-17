@@ -4,6 +4,7 @@ import re
 import prlsdkapi as prl
 import sys
 import optparse
+import time
 from lxml import etree
 
 import pprint
@@ -139,7 +140,7 @@ def print_tree(snapshot, offset = 0):
 	current = ""
 	if snapshot.current:
 		current = "<-- current"
-	print "%s%s %s %s" % (prefix, marker, str(snapshot), current)
+	print "%s%s %s %s" % (prefix, marker, unicode(snapshot), current)
 	for _, child in snapshot.children.iteritems():
 		print_tree(child, offset + 1)
 
@@ -154,7 +155,7 @@ def find_guid(snapshot, tag):
 	if not snapshot:
 		return None
 
-	if snapshot.description == tag_value(tag):
+	if tag_value(tag) in snapshot.description:
 		return snapshot.guid
 
 	for _, child in snapshot.children.iteritems():
@@ -171,7 +172,7 @@ def create_snapshot(vm_list, tag):
 			raise Exception("Tag is not unique: VM %s already contains snapshot with tag '%s%s'", vm.get_name(), tag, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
 
 	jobs = {}
-	description = tag_value(tag)
+	description = tag_value(tag) + " created at " + time.strftime("%a, %d %b %Y %H:%M:%S %Z", time.localtime())
 	for vm in vm_list:
 		vm_name = vm.get_name()
 		print "creating snapshot for %s %s" % (vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
