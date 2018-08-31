@@ -7,9 +7,11 @@ import optparse
 import time
 import subprocess
 from lxml import etree
+import logging
 
-import pprint
-pp = pprint.PrettyPrinter(indent=2)
+LOG_FORMAT = "%(levelname)s:PID %(process)d:%(asctime)s:%(message)s"
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format=LOG_FORMAT)
+logger = logging.getLogger()
 
 
 class Actions:
@@ -127,7 +129,7 @@ def build_tree(vm):
 		snapshot = Snapshot.parse(item)
 		return snapshot
 	except Exception, e:
-		print xml
+		logger.error(xml)
 		raise
 
 def print_tree(snapshot, offset = 0):
@@ -208,7 +210,7 @@ def create_snapshot(vm_list, tag):
 	description = tag_value(tag) + " created at " + time.strftime("%a, %d %b %Y %H:%M:%S %Z", time.localtime())
 	for vm in vm_list:
 		vm_name = vm.get_name()
-		print "creating snapshot for %s %s" % (vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
+		logger.info("creating snapshot for %s %s" % (vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname()))
 
 		# service pba preventing to create snapshot on containers
 		# so need to stop this service before create snapshot
@@ -232,7 +234,7 @@ def switch_to_snapshot(vm_list, tag):
 
 	for vm, guid in guids.items():
 		vm_name = vm.get_name()
-		print "switching to snapshot '%s' for %s%s" % (guid, vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
+		logger.info("switching to snapshot '%s' for %s%s" % (guid, vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname()))
 
 		# service pba preventing to switch to snapshot on containers
 		# so need to stop this service before create snapshot
@@ -258,7 +260,7 @@ def remove_snapshot(vm_list, tag):
 		vm_name = vm.get_name()
 		if not guid:
 			continue
-		print "removing snapshot '%s' for %s%s" % (guid, vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
+		logger.info("removing snapshot '%s' for %s%s" % (guid, vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname()))
 		vm.delete_snapshot(guid).wait()
 
 def snapshot_tree(vm_list):
