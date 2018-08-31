@@ -43,7 +43,7 @@ def parse_command_line_arguments():
 		optparse.make_option("--switch", action="callback", callback=optparse_crs_callback, type="string", help="switch to snapshot"),
 		optparse.make_option("--remove", action="callback", callback=optparse_crs_callback, type="string", help="remove snapshot"),
 		optparse.make_option("--tree", action="store_const", const=Actions.TREE, dest="action", help="show snapshots tree"),
-		optparse.make_option("--perform", dest="perform", action="store_true", default="False", help=optparse.SUPPRESS_HELP)
+		optparse.make_option("--perform", dest="perform", action="store_true", default=False, help=optparse.SUPPRESS_HELP)
 	]
 
 	snapshot_options_group = optparse.OptionGroup(parser, 'Snapshot operations')
@@ -260,8 +260,7 @@ if __name__ == "__main__":
 		snapshot_tree(vm_list_filtered)
 		exit(0)
 
-	## wtf ?
-	if perform == True:
+	if perform:
 		vm_list_filtered = filter(filter_by_query(query), vm_list)
 		actions[action]["action"](vm_list_filtered, tag)
 	else:
