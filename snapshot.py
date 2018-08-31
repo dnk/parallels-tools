@@ -17,54 +17,55 @@ class Actions:
 	REMOVE = 2
 	TREE = 3
 
-parser = optparse.OptionParser()
+def parse_command_line_arguments():
+	parser = optparse.OptionParser()
 
-choose_options_list = [
-	optparse.make_option("--name", dest="name", type="string", help="select hosts:VMs by name and CTs by hostname like grep or CTs by id"),
-]
+	choose_options_list = [
+		optparse.make_option("--name", dest="name", type="string", help="select hosts:VMs by name and CTs by hostname like grep or CTs by id"),
+	]
 
-choose_options_group = optparse.OptionGroup(parser, 'Select operations')
-choose_options_group.add_options(choose_options_list)
-parser.add_option_group(choose_options_group)
+	choose_options_group = optparse.OptionGroup(parser, 'Select operations')
+	choose_options_group.add_options(choose_options_list)
+	parser.add_option_group(choose_options_group)
 
-def optparse_crs_callback(option, opt, value, parser):
-	parser.values.tag = value
-	if opt == "--create":
-		parser.values.action = Actions.CREATE
-	if opt == "--switch":
-		parser.values.action = Actions.SWITCH
-	if opt == "--remove":
-		parser.values.action = Actions.REMOVE
+	def optparse_crs_callback(option, opt, value, parser):
+		parser.values.tag = value
+		if opt == "--create":
+			parser.values.action = Actions.CREATE
+		if opt == "--switch":
+			parser.values.action = Actions.SWITCH
+		if opt == "--remove":
+			parser.values.action = Actions.REMOVE
 		
+	snapshot_options_list = [
+		optparse.make_option("--create", action="callback", callback=optparse_crs_callback, type="string", help="create snapshot"),
+		optparse.make_option("--switch", action="callback", callback=optparse_crs_callback, type="string", help="switch to snapshot"),
+		optparse.make_option("--remove", action="callback", callback=optparse_crs_callback, type="string", help="remove snapshot"),
+		optparse.make_option("--tree", action="store_const", const=Actions.TREE, dest="action", help="show snapshots tree"),
+	]
 
-snapshot_options_list = [
-	optparse.make_option("--create", action="callback", callback=optparse_crs_callback, type="string", help="create snapshot"),
-	optparse.make_option("--switch", action="callback", callback=optparse_crs_callback, type="string", help="switch to snapshot"),
-	optparse.make_option("--remove", action="callback", callback=optparse_crs_callback, type="string", help="remove snapshot"),
-	optparse.make_option("--tree", action="store_const", const=Actions.TREE, dest="action", help="show snapshots tree"),
-]
+	snapshot_options_group = optparse.OptionGroup(parser, 'Snapshot operations')
+	snapshot_options_group.add_options(snapshot_options_list)
+	parser.add_option_group(snapshot_options_group)
 
-snapshot_options_group = optparse.OptionGroup(parser, 'Snapshot operations')
-snapshot_options_group.add_options(snapshot_options_list)
-parser.add_option_group(snapshot_options_group)
+	(options, args) = parser.parse_args()
 
-(options, args) = parser.parse_args()
+	try:
+		query = options.name
+		if not query:
+			raise Exception("query is None")
+		action = options.action
+		if action is None:
+			raise Exception("action is None")
 
-try:
-	query = options.name
-	if not query:
-		raise Exception("query is None")
-	action = options.action
-	if action is None:
-		raise Exception("action is None")
+		tag = options.tag if hasattr(options, "tag") else None
+		if not tag and action in (Actions.CREATE, Actions.SWITCH, Actions.REMOVE):
+			raise Exception("tag is None")
+	except :
+		parser.print_help()
+		sys.exit(1)
 
-	tag = options.tag if hasattr(options, "tag") else None
-	if not tag and action in (Actions.CREATE, Actions.SWITCH, Actions.REMOVE):
-		raise Exception("tag is None")
-except :
-	parser.print_help()
-	sys.exit(1)
-
+	return (query, action, tag)
 
 
 def init():
@@ -222,7 +223,7 @@ def remove_snapshot(vm_list, tag):
 
 	wait_jobs(jobs)
 
-def snapshot_tree(vm_list, tag):
+def snapshot_tree(vm_list):
 	snapshots = get_snapshot_trees(vm_list)
 	for vm, snapshot in snapshots.iteritems():
 		print "%s %s:" % (vm.get_name(), "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
@@ -241,25 +242,29 @@ def host_filter(vm):
 	else: # prl.consts.PVT_CT
 		return vm.get_name() == query or re.search(query, vm.get_hostname())
 
-init()
 
+if __name__ == "__main__":
+	query, action, tag = parse_command_line_arguments()
 
-server = prl.Server()
-server.login_local().wait()
+	actions = { 
+		Actions.CREATE: create_snapshot,
+		Actions.SWITCH: switch_to_snapshot,
+		Actions.REMOVE: remove_snapshot,
+		Actions.TREE: snapshot_tree,
+	}
 
-vm_list = server.get_vm_list_ex(prl.consts.PVTF_VM | prl.consts.PVTF_CT).wait()
+	if (actions.get(action) is None):
+		raise NotImplementedError("action %s is not implemented" % str(action))
 
-vm_list_filtered = filter(host_filter, vm_list)
+	init()
+	server = prl.Server()
+	server.login_local().wait()
 
-actions = { 
-	Actions.CREATE: create_snapshot,
-	Actions.SWITCH: switch_to_snapshot,
-	Actions.REMOVE: remove_snapshot,
-	Actions.TREE: snapshot_tree,
-}
+	vm_list = server.get_vm_list_ex(prl.consts.PVTF_VM | prl.consts.PVTF_CT).wait()
+	vm_list_filtered = filter(host_filter, vm_list)
 
-if (actions.get(action) is None):
-	raise NotImplementedError("action %s is not implemented" % str(action))
-
-actions[action](vm_list_filtered, tag)
+	if action == Actions.TREE:
+		snapshot_tree(vm_list_filtered)
+	else:
+		actions[action](vm_list_filtered, tag)
 
