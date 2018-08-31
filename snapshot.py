@@ -5,6 +5,7 @@ import prlsdkapi as prl
 import sys
 import optparse
 import time
+import subprocess
 from lxml import etree
 
 import pprint
@@ -42,6 +43,7 @@ def parse_command_line_arguments():
 		optparse.make_option("--switch", action="callback", callback=optparse_crs_callback, type="string", help="switch to snapshot"),
 		optparse.make_option("--remove", action="callback", callback=optparse_crs_callback, type="string", help="remove snapshot"),
 		optparse.make_option("--tree", action="store_const", const=Actions.TREE, dest="action", help="show snapshots tree"),
+		optparse.make_option("--perform", dest="perform", action="store_true", default="False", help=optparse.SUPPRESS_HELP)
 	]
 
 	snapshot_options_group = optparse.OptionGroup(parser, 'Snapshot operations')
@@ -65,7 +67,7 @@ def parse_command_line_arguments():
 		parser.print_help()
 		sys.exit(1)
 
-	return (query, action, tag)
+	return (query, action, tag, options.perform)
 
 
 def init():
@@ -236,20 +238,30 @@ def snapshot_tree(vm_list):
 			print "No snapshots\n"
 
 
-def host_filter(vm):
-	if vm.get_vm_type() == prl.consts.PVT_VM:
-		return re.search(query, vm.get_name())
-	else: # prl.consts.PVT_CT
-		return vm.get_name() == query or re.search(query, vm.get_hostname())
-
+def filter_by_query(query):
+	def filter(vm):
+		if vm.get_vm_type() == prl.consts.PVT_VM:
+			return re.search(query, vm.get_name())
+		else: # prl.consts.PVT_CT
+			return vm.get_name() == query or re.search(query, vm.get_hostname())
+	return filter
 
 if __name__ == "__main__":
-	query, action, tag = parse_command_line_arguments()
+	query, action, tag, perform = parse_command_line_arguments()
 
 	actions = { 
-		Actions.CREATE: create_snapshot,
-		Actions.SWITCH: switch_to_snapshot,
-		Actions.REMOVE: remove_snapshot,
+		Actions.CREATE: {
+			"action": create_snapshot,
+			"command": "--create"
+		},
+		Actions.SWITCH: {
+			"action": switch_to_snapshot,
+			"command": "--switch"
+		},
+		Actions.REMOVE: {
+			"action": remove_snapshot,
+			"command": "--remove"
+		},
 		Actions.TREE: snapshot_tree,
 	}
 
@@ -261,10 +273,22 @@ if __name__ == "__main__":
 	server.login_local().wait()
 
 	vm_list = server.get_vm_list_ex(prl.consts.PVTF_VM | prl.consts.PVTF_CT).wait()
-	vm_list_filtered = filter(host_filter, vm_list)
-
 	if action == Actions.TREE:
+		vm_list_filtered = filter(filter_by_query(query), vm_list)
 		snapshot_tree(vm_list_filtered)
+		exit(0)
+
+	if perform:
+		vm_list_filtered = filter(filter_by_query(query), vm_list)
+		print ([vm.get_name() + " " + vm.get_server_uuid() for vm in vm_list_filtered])
+		actions[action]["action"](vm_list_filtered, tag)
 	else:
-		actions[action](vm_list_filtered, tag)
+		vm_list_filtered = filter(filter_by_query(query), vm_list)
+		vm_full_names = [vm.get_name() for vm in vm_list_filtered]
+		command = actions[action]["command"]
+		processes = [subprocess.Popen([sys.executable, __file__, command, tag, "--name", full_name, "--perform"]) for full_name in vm_full_names]
+
+		for process in processes:
+			process.wait()
+
 
