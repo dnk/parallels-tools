@@ -2,7 +2,7 @@
 
 import re
 import prlsdkapi as prl
-import sys
+import sys, os
 import optparse
 import time
 import subprocess
@@ -73,13 +73,6 @@ def parse_command_line_arguments():
 def init():
 	if not prl.is_sdk_initialized():
 		prl.init_server_sdk()
-
-def wait_jobs(jobs):
-	for vm, job in jobs.iteritems():
-		vm_name = vm.get_name()
-		print "waiting job for %s %s" % (vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
-		job.wait()
-		print "done"
 
 def tag_value(tag):
 	return "tag:%s" % tag
@@ -174,14 +167,11 @@ def create_snapshot(vm_list, tag):
 		if find_guid(snapshot, tag):
 			raise Exception("Tag is not unique: VM %s already contains snapshot with tag '%s%s'", vm.get_name(), tag, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
 
-	jobs = {}
 	description = tag_value(tag) + " created at " + time.strftime("%a, %d %b %Y %H:%M:%S %Z", time.localtime())
 	for vm in vm_list:
 		vm_name = vm.get_name()
 		print "creating snapshot for %s %s" % (vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
-		job = vm.create_snapshot(tag, description)
-		jobs[vm] = job
-	wait_jobs(jobs)
+		vm.create_snapshot(tag, description).wait()
 
 
 def switch_to_snapshot(vm_list, tag):
@@ -194,14 +184,10 @@ def switch_to_snapshot(vm_list, tag):
 	if not_found:
 		raise Exception("Found no shapshot with tag '%s' for %s" % (tag, ", ".join(map(lambda (key, value): key.get_name(), not_found))))
 
-	jobs = {}
 	for vm, guid in guids.items():
 		vm_name = vm.get_name()
 		print "switching to snapshot '%s' for %s%s" % (guid, vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
-		job = vm.switch_to_snapshot(guid)
-		jobs[vm] = job
-
-	wait_jobs(jobs)
+		vm.switch_to_snapshot(guid).wait()
 
 
 def remove_snapshot(vm_list, tag):
@@ -214,16 +200,12 @@ def remove_snapshot(vm_list, tag):
 #	if not_found:
 #		raise Exception("Found no shapshot with tag '%s' for %s" % (tag, ", ".join(map(lambda (key, value): key.get_name(), not_found))))
 
-	jobs = {}
 	for vm, guid in guids.items():
 		vm_name = vm.get_name()
 		if not guid:
 			continue
 		print "removing snapshot '%s' for %s%s" % (guid, vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
-		job = vm.delete_snapshot(guid)
-		jobs[vm] = job
-
-	wait_jobs(jobs)
+		vm.delete_snapshot(guid).wait()
 
 def snapshot_tree(vm_list):
 	snapshots = get_snapshot_trees(vm_list)
@@ -278,15 +260,15 @@ if __name__ == "__main__":
 		snapshot_tree(vm_list_filtered)
 		exit(0)
 
-	if perform:
+	## wtf ?
+	if perform == True:
 		vm_list_filtered = filter(filter_by_query(query), vm_list)
-		print ([vm.get_name() + " " + vm.get_server_uuid() for vm in vm_list_filtered])
 		actions[action]["action"](vm_list_filtered, tag)
 	else:
 		vm_list_filtered = filter(filter_by_query(query), vm_list)
 		vm_full_names = [vm.get_name() for vm in vm_list_filtered]
 		command = actions[action]["command"]
-		processes = [subprocess.Popen([sys.executable, __file__, command, tag, "--name", full_name, "--perform"]) for full_name in vm_full_names]
+		processes = [subprocess.Popen([sys.executable, os.path.abspath(__file__), command, tag, "--name", full_name, "--perform"], executable=sys.executable) for full_name in vm_full_names]
 
 		for process in processes:
 			process.wait()
