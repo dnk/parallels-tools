@@ -161,6 +161,44 @@ def find_guid(snapshot, tag):
 
 	return None
 
+def execute_command(vm, cmd, args):
+	io = prl.VmIO()
+	io.connect_to_vm(vm, prl.consts.PDCT_HIGH_QUALITY_WITHOUT_COMPRESSION).wait()
+
+	result = vm.login_in_guest('root', '').wait()
+	guest_session = result.get_param()
+
+	sdkargs = prl.StringList()
+	for arg in args:
+		sdkargs.add_item(arg)
+	sdkenvs = prl.StringList()
+	sdkenvs.add_item("")
+
+	ifd, ofd = os.pipe()
+	flags = prl.consts.PRPM_RUN_PROGRAM_ENTER | prl.consts.PRPM_RUN_PROGRAM_IN_SHELL | prl.consts.PFD_STDOUT
+	job = guest_session.run_program(cmd, sdkargs, sdkenvs, flags, 0, ofd)
+	job.wait()
+	os.close(ofd)
+
+	r = os.fdopen(ifd)
+	output = ""
+	while True:
+		str = r.read(1024)
+		if not str:
+			break
+		output += str
+	guest_session.logout()
+	io.disconnect_from_vm(vm)
+	return output
+
+def stop_service(vm, name):
+	cmd = "chkconfig --list %(name)s && service %(name)s stop" % {"name": name}
+	execute_command(vm, "/bin/sh", ["-c", cmd])
+
+def start_service(vm, name):
+	cmd = "chkconfig --list %(name)s && service %(name)s start" % {"name": name}
+	execute_command(vm, "/bin/sh", ["-c", cmd])
+
 def create_snapshot(vm_list, tag):
 	snapshots = get_snapshot_trees(vm_list)
 	for vm, snapshot in snapshots.iteritems():
@@ -171,8 +209,16 @@ def create_snapshot(vm_list, tag):
 	for vm in vm_list:
 		vm_name = vm.get_name()
 		print "creating snapshot for %s %s" % (vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
+
+		# service pba preventing to create snapshot on containers
+		# so need to stop this service before create snapshot
+		if vm.get_vm_type() == prl.consts.PVT_CT:
+			stop_service(vm, "pba")
+
 		vm.create_snapshot(tag, description).wait()
 
+		if vm.get_vm_type() == prl.consts.PVT_CT:
+			start_service(vm, "pba")
 
 def switch_to_snapshot(vm_list, tag):
 	snapshots = get_snapshot_trees(vm_list)
@@ -187,8 +233,16 @@ def switch_to_snapshot(vm_list, tag):
 	for vm, guid in guids.items():
 		vm_name = vm.get_name()
 		print "switching to snapshot '%s' for %s%s" % (guid, vm_name, "" if vm.get_vm_type() == prl.consts.PVT_VM else vm.get_hostname())
+
+		# service pba preventing to switch to snapshot on containers
+		# so need to stop this service before create snapshot
+		if vm.get_vm_type() == prl.consts.PVT_CT:
+			stop_service(vm, "pba")
+
 		vm.switch_to_snapshot(guid).wait()
 
+		if vm.get_vm_type() == prl.consts.PVT_CT:
+			start_service(vm, "pba")
 
 def remove_snapshot(vm_list, tag):
 	snapshots = get_snapshot_trees(vm_list)
