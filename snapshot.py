@@ -10,7 +10,12 @@ from lxml import etree
 import logging
 import logging.config
 
-logging.config.fileConfig('logging.conf')
+import yaml
+
+with open("logging.yaml") as f:
+	config = yaml.load(f.read())
+	logging.config.dictConfig(config)
+
 logger = logging.getLogger("snapshot")
 
 class Actions:
