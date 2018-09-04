@@ -8,11 +8,10 @@ import time
 import subprocess
 from lxml import etree
 import logging
+import logging.config
 
-LOG_FORMAT = "%(levelname)s:PID %(process)d:%(asctime)s:%(message)s"
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format=LOG_FORMAT)
-logger = logging.getLogger()
-
+logging.config.fileConfig('logging.conf')
+logger = logging.getLogger("snapshot")
 
 class Actions:
 	CREATE = 0
