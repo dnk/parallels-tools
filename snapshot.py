@@ -12,7 +12,9 @@ import logging.config
 
 import yaml
 
-with open("logging.yaml") as f:
+SCRIPT_DIRECTORY = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))
+LOGGING_YAML = os.path.join(SCRIPT_DIRECTORY, "logging.yaml")
+with open(LOGGING_YAML) as f:
 	config = yaml.load(f.read())
 	logging.config.dictConfig(config)
 

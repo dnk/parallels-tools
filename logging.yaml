@@ -1,0 +1,19 @@
+version: 1
+formatters:
+    colorFormatter:
+        class: colorlog.ColoredFormatter
+        format: "%(log_color)s%(levelname)-8s%(reset)s %(bg_blue)s[%(name)s]%(reset)s %(message)s"
+        datefmt: "%m-%d %H:%M:%S"
+
+handlers:
+    consoleHandler:
+        class: logging.StreamHandler
+        level: DEBUG
+        formatter: colorFormatter
+        stream: ext://sys.stdout
+
+loggers:
+    root:
+        level: DEBUG
+        handlers: [consoleHandler]
+
